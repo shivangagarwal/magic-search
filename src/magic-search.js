@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOM from "react-dom";
 import PropTypes from 'prop-types';
-import './App.css';
+import './magic-search.css';
 import DatePicker from "react-datepicker";
 import InputTrigger from 'react-input-trigger';
 
@@ -17,6 +17,7 @@ class MagicSearch extends React.Component {
         folder: '',
         keywords: '',
         value: '',
+        highlightedValue: '',
         showFolderSuggestor: false,
         showDateSuggestor: false,
         showMessageSuggestor: false,
@@ -28,9 +29,13 @@ class MagicSearch extends React.Component {
         messageSuggestorTop: null,
         currentDimensionMetadata: null,
         folderText: '',
-        currentFolderSelection: 0
+        currentFolderSelection: 0,
+        scrollTop: 0
       }
       this.handleKeyDown = this.handleKeyDown.bind(this);
+      this.handleTextScroll = this.handleTextScroll.bind(this);
+      this.textInputRef = React.createRef();
+      this.fakeTextDiv = React.createRef();
   }
 
 
@@ -124,7 +129,6 @@ class MagicSearch extends React.Component {
 
   handleDateTriggerInput = (metaData) => {
     const dateInputText = metaData.text;
-    console.log(dateInputText);
     if (dateInputText.trim().length === 16) {
         if (!isNaN(Date.parse(dateInputText.trim()))) {
             const dateObject = new Date(Date.parse(dateInputText.trim()));
@@ -143,10 +147,11 @@ class MagicSearch extends React.Component {
       const dimension = this.extractDimension(metaData.cursor);
       if (!dimension) {
           // Don't want to do anything if it doesn't match with any dimension
-          this.onTriggerEnd();
+          this.endHandler();
           return;
       }
       if (this.dimensionsActions[dimension]) {
+          this.highlightText();
           (this.dimensionsActions[dimension].triggerStart)(metaData)
       }
   }
@@ -183,6 +188,24 @@ class MagicSearch extends React.Component {
 
   handleTextChange = (event) => {
     this.setState({value: event.target.value});
+    this.highlightText();
+  }
+
+  highlightText = () => {
+    let currentValue = this.state.value;
+    this.dimensions.forEach(d => {
+        currentValue = currentValue.replace(new RegExp(`${d}:`, 'gi'), `<mark>${d}:</mark>`);
+    });
+    console.log(currentValue);
+    this.setState({
+        highlightedValue: currentValue
+    });
+    this.handleTextScroll();
+  }
+
+  handleTextScroll = () => {
+    const scrollTop = this.textInputRef.scrollTop;
+    this.fakeTextDiv.current.scrollTop = scrollTop;
   }
 
   handleDateChange = (date) => {
@@ -231,6 +254,10 @@ class MagicSearch extends React.Component {
 
     return (
         <div style={{position:'relative'}}  onKeyDown={this.handleKeyDown}>
+            <div className="backdrop" ref={this.fakeTextDiv}>
+                <div className="highlights" dangerouslySetInnerHTML={{__html: this.state.highlightedValue}}>
+                </div>
+            </div>
         <InputTrigger
             trigger={{
                 keyCode: 186,
@@ -241,16 +268,20 @@ class MagicSearch extends React.Component {
             onType={this.onTriggerInput}
             endTrigger={(endHandler) => { this.endHandler = endHandler; }}>
             <textarea
+                    name='search-text-field'
                     style={style}
+                    ref={this.textInputRef}
                     placeholder={placeholder}
                     onBlur={this.handleTextChange.bind(this)}
                     onChange={this.handleTextChange.bind(this)}
+                    onScroll={this.handleTextScroll.bind(this)}
                     value={this.state.value}
                     />
         </InputTrigger>
 
         <div
           id="message"
+          className="overlayDiv"
           style={{
             position: "absolute",
             width: "500px",
@@ -264,10 +295,11 @@ class MagicSearch extends React.Component {
           }}
         >
         Use date formats: MM-dd-YYYY HH:mm or YYYY-MM-dd HH:mm
-        or MM/dd/YYYY HH:mm or YYYY/MM/dd
+        or MM/dd/YYYY HH:mm or YYYY/MM/dd HH:mm
         </div>
         <div
           id="folderDropdown"
+          className="overlayDiv"
           style={{
             position: "absolute",
             width: "200px",
@@ -298,6 +330,7 @@ class MagicSearch extends React.Component {
         </div>
         <div
           id="dateDropdown"
+          className="overlayDiv"
           style={{
             position: "absolute",
             width: "313px",
