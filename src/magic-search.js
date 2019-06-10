@@ -156,12 +156,13 @@ class MagicSearch extends React.Component {
     const dateInputText = metaData.text;
     if (dateInputText.trim().length === 16) {
         if (!isNaN(Date.parse(dateInputText.trim()))) {
-            console.log('Got the parsing date');
             const dateObject = new Date(Date.parse(dateInputText.trim()));
             const formattedDate = dateObject.toISOString().replace('T', ' ').substring(0, 16);
+            console.log(this.state.currentDimensionMetadata.dimension);
             const stateField = this.dimensionsActions[this.state.currentDimensionMetadata.dimension].stateField;
             const stateUpdateObject = {};
             stateUpdateObject[stateField] = formattedDate;
+            console.log(stateUpdateObject);
             this.setState(stateUpdateObject);
             this.resetTriggerState(true);
         }
@@ -256,6 +257,13 @@ class MagicSearch extends React.Component {
   handleSubmit = e => {
     e.preventDefault();
     // Here create the JSON format that we want for the
+    const jsonToPost = {
+        from: this.state.from,
+        to: this.state.to,
+        folder: this.state.folder,
+        text: this.state.value
+    };
+    console.log(jsonToPost);
   }
 
   renderFolderListDiv = () => {
@@ -290,7 +298,7 @@ class MagicSearch extends React.Component {
     from: {
       triggerStart: this.handleDateTriggerStart,
       triggerInput: this.handleDateTriggerInput,
-      stateFiled: 'from',
+      stateField: 'from',
       maximumInstances: 1
     },
     to: {
@@ -315,99 +323,106 @@ class MagicSearch extends React.Component {
 
 
     return (
-        <div style={{position:'relative'}}  onKeyDown={this.handleKeyDown}>
-            <div className="backdrop" ref={this.fakeTextDiv}>
-                <div className="highlights" dangerouslySetInnerHTML={{__html: this.state.highlightedValue}}>
+        <div>
+            <div style={{position:'relative'}}  onKeyDown={this.handleKeyDown}>
+                <div className="backdrop" ref={this.fakeTextDiv}>
+                    <div className="highlights" dangerouslySetInnerHTML={{__html: this.state.highlightedValue}}>
+                    </div>
                 </div>
+            <InputTrigger
+                trigger={{
+                    keyCode: 186,
+                    shiftKey: true,
+                }}
+                onStart={this.onTriggerStart}
+                onCancel={this.resetTriggerState}
+                onType={this.onTriggerInput}
+                endTrigger={(endHandler) => { this.endHandler = endHandler; }}>
+                <textarea
+                        name='search-text-field'
+                        style={style}
+                        ref={this.textInputRef}
+                        placeholder={placeholder}
+                        onBlur={this.handleTextChange.bind(this)}
+                        onChange={this.handleTextChange.bind(this)}
+                        onScroll={this.handleTextScroll.bind(this)}
+                        value={this.state.value}
+                        />
+            </InputTrigger>
+            <div id="helpMessage"
+            style={{
+                paddingTop: "55px",
+                display: this.state.showHelpMessageSuggestor ? "block" : "none"}}>
+                {this.state.messageText}
             </div>
-        <InputTrigger
-            trigger={{
-                keyCode: 186,
-                shiftKey: true,
-            }}
-            onStart={this.onTriggerStart}
-            onCancel={this.resetTriggerState}
-            onType={this.onTriggerInput}
-            endTrigger={(endHandler) => { this.endHandler = endHandler; }}>
-            <textarea
-                    name='search-text-field'
-                    style={style}
-                    ref={this.textInputRef}
-                    placeholder={placeholder}
-                    onBlur={this.handleTextChange.bind(this)}
-                    onChange={this.handleTextChange.bind(this)}
-                    onScroll={this.handleTextScroll.bind(this)}
-                    value={this.state.value}
-                    />
-        </InputTrigger>
-        <div id="helpMessage"
-         style={{
-             paddingTop: "55px",
-             display: this.state.showHelpMessageSuggestor ? "block" : "none"}}>
-            {this.state.messageText}
-        </div>
 
-        <div
-          id="message"
-          className="overlayDiv"
-          style={{
-            position: "absolute",
-            width: "500px",
-            borderRadius: "6px",
-            background: "white",
-            boxShadow: "rgba(0, 0, 0, 0.4) 0px 1px 4px",
-            minHeight: "50px",
-            display: this.state.showMessageSuggestor ? "block" : "none",
-            top: this.state.messageSuggestorTop,
-            left: this.state.messageSuggestorLeft,
-          }}
-        >
-        Use date formats: MM-dd-YYYY HH:mm or YYYY-MM-dd HH:mm or MM/dd/YYYY HH:mm or YYYY/MM/dd HH:mm
-        </div>
-        <div
-          id="folderDropdown"
-          className="overlayDiv"
-          style={{
-            position: "absolute",
-            width: "200px",
-            borderRadius: "6px",
-            background: "white",
-            boxShadow: "rgba(0, 0, 0, 0.4) 0px 1px 4px",
-            minHeight: "100px",
-            display: this.state.showFolderSuggestor ? "block" : "none",
-            top: this.state.folderSuggestorTop,
-            left: this.state.folderSuggestorLeft,
-          }}
-        >
-         {
-           this.renderFolderListDiv()
-         }
-        </div>
-        <div
-          id="dateDropdown"
-          className="overlayDiv"
-          style={{
-            position: "absolute",
-            width: "313px",
-            borderRadius: "6px",
-            background: "white",
-            boxShadow: "rgba(0, 0, 0, 0.4) 0px 1px 4px",
-            minHeight: "200px",
-            display: this.state.showDateSuggestor ? "block" : "none",
-            top: this.state.dateSuggestorTop,
-            left: this.state.dateSuggestorLeft,
-          }}
-        >
-         <DatePicker
-            inline
-            selected={new Date()}
-            timeFormat="HH:mm"
-            timeIntervals={15}
-            onChange={this.handleDateChange}
-            preventOpenOnFocus={true}
-            showTimeSelect
-          />
-        </div>
+            <div
+            id="message"
+            className="overlayDiv"
+            style={{
+                position: "absolute",
+                width: "500px",
+                borderRadius: "6px",
+                background: "white",
+                boxShadow: "rgba(0, 0, 0, 0.4) 0px 1px 4px",
+                minHeight: "50px",
+                display: this.state.showMessageSuggestor ? "block" : "none",
+                top: this.state.messageSuggestorTop,
+                left: this.state.messageSuggestorLeft,
+            }}
+            >
+            Use date formats: MM-dd-YYYY HH:mm or YYYY-MM-dd HH:mm or MM/dd/YYYY HH:mm or YYYY/MM/dd HH:mm
+            </div>
+            <div
+            id="folderDropdown"
+            className="overlayDiv"
+            style={{
+                position: "absolute",
+                width: "200px",
+                borderRadius: "6px",
+                background: "white",
+                boxShadow: "rgba(0, 0, 0, 0.4) 0px 1px 4px",
+                minHeight: "100px",
+                display: this.state.showFolderSuggestor ? "block" : "none",
+                top: this.state.folderSuggestorTop,
+                left: this.state.folderSuggestorLeft,
+            }}
+            >
+            {
+            this.renderFolderListDiv()
+            }
+            </div>
+            <div
+            id="dateDropdown"
+            className="overlayDiv"
+            style={{
+                position: "absolute",
+                width: "313px",
+                borderRadius: "6px",
+                background: "white",
+                boxShadow: "rgba(0, 0, 0, 0.4) 0px 1px 4px",
+                minHeight: "200px",
+                display: this.state.showDateSuggestor ? "block" : "none",
+                top: this.state.dateSuggestorTop,
+                left: this.state.dateSuggestorLeft,
+            }}
+            >
+            <DatePicker
+                inline
+                selected={new Date()}
+                timeFormat="HH:mm"
+                timeIntervals={15}
+                onChange={this.handleDateChange}
+                preventOpenOnFocus={true}
+                showTimeSelect
+            />
+            </div>
+            </div>
+            <br />
+            <br />
+            <button onClick={this.handleSubmit}>
+                Search
+            </button>
         </div>
     );
   }
