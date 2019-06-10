@@ -9,6 +9,16 @@ import "react-datepicker/dist/react-datepicker.css";
 
 
 class MagicSearch extends React.Component {
+
+  // Ideally this we will pre-fetch for a user and keep it
+  folders = [
+    'movies',
+    'documentries',
+    'other',
+    'home'
+  ];
+
+
   constructor(props) {
       super(props);
       this.state = {
@@ -38,15 +48,6 @@ class MagicSearch extends React.Component {
       this.fakeTextDiv = React.createRef();
   }
 
-
-  // Ideally this we will pre-fetch for a user and keep it
-  folders = [
-    'movies',
-    'documentries',
-    'other',
-    'home'
-  ]
-
   handleKeyDown = (event) => {
     const { which } = event;
 
@@ -60,6 +61,12 @@ class MagicSearch extends React.Component {
 
     if (which === 13) { // 13 is the character code for enter
         event.preventDefault();
+        // Returning here so that no reset happens and selection also does not happen
+        const currentFolders = this.folders
+        .filter(folder => folder.indexOf(this.state.folderText) !== -1);
+        if (currentFolders.length === 0) {
+            return;
+        }
         const startPosition = this.state.currentDimensionMetadata.cursor.selectionStart;
         const folder = this.folders[this.state.currentFolderSelection];
 
@@ -109,6 +116,7 @@ class MagicSearch extends React.Component {
         messageSuggestorLeft: null,
         messageSuggestorTop: null,
         folderText: '',
+        currentFolderSelection: 0,
         currentDimensionMetadata: null
       });
     // Ending the trigger handler each time we end processing a trigger.
@@ -196,7 +204,6 @@ class MagicSearch extends React.Component {
     this.dimensions.forEach(d => {
         currentValue = currentValue.replace(new RegExp(`${d}:`, 'gi'), `<mark>${d}:</mark>`);
     });
-    console.log(currentValue);
     this.setState({
         highlightedValue: currentValue
     });
@@ -221,6 +228,30 @@ class MagicSearch extends React.Component {
   handleSubmit = e => {
     e.preventDefault();
     // Here create the JSON format that we want for the
+  }
+
+  renderFolderListDiv = () => {
+    const currentFolders = this.folders
+    .filter(folder => folder.indexOf(this.state.folderText) !== -1);
+    if (currentFolders && currentFolders.length === 0) {
+        return (
+            <div style={{padding: '10px 20px'}}>
+            No matching folder, update your search.
+            </div>
+        )
+    } else {
+        return  (currentFolders
+            .map((folder, index) => (
+              <div
+                style={{
+                  padding: '10px 20px',
+                  background: index === this.state.currentFolderSelection ? '#eee' : ''
+                }}
+              >
+                { folder }
+              </div>
+            )));
+    }
   }
 
   dimensions = [
@@ -313,20 +344,8 @@ class MagicSearch extends React.Component {
           }}
         >
          {
-            this.folders
-            .filter(folder => folder.indexOf(this.state.folderText) !== -1)
-            .map((folder, index) => (
-              <div
-                style={{
-                  padding: '10px 20px',
-                  background: index === this.state.currentFolderSelection ? '#eee' : ''
-                }}
-              >
-                { folder }
-              </div>
-            ))
-          }
-
+           this.renderFolderListDiv()
+         }
         </div>
         <div
           id="dateDropdown"
