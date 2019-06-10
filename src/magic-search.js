@@ -31,6 +31,8 @@ class MagicSearch extends React.Component {
         showFolderSuggestor: false,
         showDateSuggestor: false,
         showMessageSuggestor: false,
+        showHelpMessageSuggestor: false,
+        messageText: '',
         folderSuggestorLeft: null,
         dateSuggestorLeft: null,
         messageSuggestorLeft: null,
@@ -40,12 +42,18 @@ class MagicSearch extends React.Component {
         currentDimensionMetadata: null,
         folderText: '',
         currentFolderSelection: 0,
-        scrollTop: 0
+        scrollTop: 0,
+        dimensionsState: this.dimensionsActions
       }
       this.handleKeyDown = this.handleKeyDown.bind(this);
       this.handleTextScroll = this.handleTextScroll.bind(this);
       this.textInputRef = React.createRef();
       this.fakeTextDiv = React.createRef();
+  }
+
+  messages = {
+    'date': 'Use date formats: MM-dd-YYYY HH:mm or YYYY-MM-dd HH:mm or MM/dd/YYYY HH:mm or YYYY/MM/dd HH:mm',
+    'maxDimension': 'There is already a instance of this tag present. The previous value for this tag will be overridden.'
   }
 
   handleKeyDown = (event) => {
@@ -75,7 +83,7 @@ class MagicSearch extends React.Component {
             value: this.updateTextValue(folder, startPosition),
             folder: folder
         })
-        this.resetTriggerState();
+        this.resetTriggerState(true);
 
     }
   }
@@ -104,7 +112,14 @@ class MagicSearch extends React.Component {
     return dimension;
   }
 
-  resetTriggerState = () => {
+  resetTriggerState = (updateDimensionActions = false) => {
+    if (updateDimensionActions) {
+        const newState = this.state.dimensionsState;
+        newState[this.state.currentDimensionMetadata.dimension].maximumInstances -= 1;
+        this.setState({
+            dimensionsState: newState
+        });
+    }
     this.setState({
         showFolderSuggestor: false,
         folderSuggestorLeft: null,
@@ -117,15 +132,17 @@ class MagicSearch extends React.Component {
         messageSuggestorTop: null,
         folderText: '',
         currentFolderSelection: 0,
-        currentDimensionMetadata: null
+        currentDimensionMetadata: null,
+        showHelpMessageSuggestor: false
       });
     // Ending the trigger handler each time we end processing a trigger.
     this.endHandler();
   }
 
   onTriggerInput = (metaData) => {
-    if (this.state.currentDimensionMetadata) {
-        (this.dimensionsActions[this.state.currentDimensionMetadata.dimension].triggerInput)(metaData)
+    if (this.state.currentDimensionMetadata && this.state.currentDimensionMetadata.dimension) {
+        const currentDimension = this.state.currentDimensionMetadata.dimension
+        this.dimensionsActions[currentDimension].triggerInput(metaData);
     }
   }
 
@@ -139,13 +156,14 @@ class MagicSearch extends React.Component {
     const dateInputText = metaData.text;
     if (dateInputText.trim().length === 16) {
         if (!isNaN(Date.parse(dateInputText.trim()))) {
+            console.log('Got the parsing date');
             const dateObject = new Date(Date.parse(dateInputText.trim()));
             const formattedDate = dateObject.toISOString().replace('T', ' ').substring(0, 16);
             const stateField = this.dimensionsActions[this.state.currentDimensionMetadata.dimension].stateField;
             const stateUpdateObject = {};
             stateUpdateObject[stateField] = formattedDate;
             this.setState(stateUpdateObject);
-            this.resetTriggerState();
+            this.resetTriggerState(true);
         }
     }
   }
@@ -160,6 +178,7 @@ class MagicSearch extends React.Component {
       }
       if (this.dimensionsActions[dimension]) {
           this.highlightText();
+          this.showHelperMessage(dimension);
           (this.dimensionsActions[dimension].triggerStart)(metaData)
       }
   }
@@ -189,7 +208,7 @@ class MagicSearch extends React.Component {
    this.setState({
     showMessageSuggestor: true,
     messageSuggestorLeft: cursor.left,
-    messageSuggestorTop: cursor.top + cursor.height, // we need to add the cursor height so that the dropdown doesn't overlap with the `:`.
+    messageSuggestorTop: cursor.top + cursor.height
    })
 
   }
@@ -208,6 +227,15 @@ class MagicSearch extends React.Component {
         highlightedValue: currentValue
     });
     this.handleTextScroll();
+  }
+
+  showHelperMessage = (dimension) => {
+    if (this.state.dimensionsState[dimension].maximumInstances <= 0) {
+        this.setState({
+            showHelpMessageSuggestor: true,
+            messageText: this.messages.maxDimension
+        });
+    }
   }
 
   handleTextScroll = () => {
@@ -262,17 +290,20 @@ class MagicSearch extends React.Component {
     from: {
       triggerStart: this.handleDateTriggerStart,
       triggerInput: this.handleDateTriggerInput,
-      stateFiled: 'from'
+      stateFiled: 'from',
+      maximumInstances: 1
     },
     to: {
       triggerStart: this.handleDateTriggerStart,
       triggerInput: this.handleDateTriggerInput,
-      stateField: 'to'
+      stateField: 'to',
+      maximumInstances: 1
     },
     folder: {
       triggerStart: this.handleFolderTriggerStart,
       triggerInput: this.handleFolderTriggerInput,
-      stateField: 'folder'
+      stateField: 'folder',
+      maximumInstances: 1
     }
   }
 
@@ -309,6 +340,12 @@ class MagicSearch extends React.Component {
                     value={this.state.value}
                     />
         </InputTrigger>
+        <div id="helpMessage"
+         style={{
+             paddingTop: "55px",
+             display: this.state.showHelpMessageSuggestor ? "block" : "none"}}>
+            {this.state.messageText}
+        </div>
 
         <div
           id="message"
@@ -325,8 +362,7 @@ class MagicSearch extends React.Component {
             left: this.state.messageSuggestorLeft,
           }}
         >
-        Use date formats: MM-dd-YYYY HH:mm or YYYY-MM-dd HH:mm
-        or MM/dd/YYYY HH:mm or YYYY/MM/dd HH:mm
+        Use date formats: MM-dd-YYYY HH:mm or YYYY-MM-dd HH:mm or MM/dd/YYYY HH:mm or YYYY/MM/dd HH:mm
         </div>
         <div
           id="folderDropdown"
